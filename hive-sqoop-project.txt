@@ -61,25 +61,43 @@ In Masked databased
 hive> use masked;
 
 hive> 
-CREATE TABLE account ( account_id int, account_name string, phone string)
+
+CREATE EXTERNAL TABLE account ( account_id int, account_name string, phone string) 
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ","
-LINES TERMINATED BY "\n";
+LINES TERMINATED BY "\n"
+location '/user/cloudera/project1/masked/account';
 
-hive> CREATE TABLE IF NOT EXISTS contact (contact_id int, account_id int, first_name string, last_name string, phone string, email string) 
+CREATE EXTERNAL TABLE IF NOT EXISTS contact (contact_id int, account_id int, first_name string, last_name string, phone string, email string) 
 ROW FORMAT DELIMITED 
 FIELDS TERMINATED BY "," 
-LINES TERMINATED BY "\n";
-
+LINES TERMINATED BY "\n" 
+location '/user/cloudera/project1/masked/contact';
 
 insert into account 
   select account_id, account_name, masknum(phone) 
   from original.account;
 
 insert into contact 
-  select contact_id, account_id, first_name, last_name, masknum(phone), maskemil(email) 
+  select contact_id, account_id, first_name, last_name, masknum(phone), maskemail(email) 
   from original.contact;
 
-   
+
+Sqoop export to mysql
+---------------------
+
+Mysql
+-----
+create table account_mask (account_id int, account_name varchar(100), phone varchar(20));
+create table contact_mask (contact_id int, account_id int, first_name varchar(100), last_name varchar(100), phone varchar(20), email varchar(60));
+
+sqoop export --connect jdbc:mysql://quickstart.cloudera/retail_db --username root --password cloudera --table contact_mask --export-dir '/user/cloudera/project1/masked/contact'
+
+sqoop export --connect jdbc:mysql://quickstart.cloudera/retail_db --username root --password cloudera --table account_mask --export-dir '/user/cloudera/project1/masked/account'
+
+
+
+
+
 
 
