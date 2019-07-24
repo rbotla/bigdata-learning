@@ -1,0 +1,85 @@
+Download files Contact.csv and Account.csv (rename to contact.csv and account.csv).
+
+Mysql
+-----
+create table account (account_id int, account_name varchar(100), phone varchar(20));
+create table contact (contact_id int, account_id int, first_name varchar(100), last_name varchar(100), phone varchar(20), email varchar(60));
+
+Termial
+-------
+$ mysqlimport --ignore-lines=1 \
+            --fields-terminated-by=, \
+            --local -u root \
+            -p retail_db \
+             contact.csv
+
+
+Sqoop
+-----
+sqoop import --connect jdbc:mysql://quickstart.cloudera/retail_db --username root --password cloudera --table contact --fields-terminated-by ',' -m 1 --target-dir /user/cloudera/project1/contact
+
+sqoop import --connect jdbc:mysql://quickstart.cloudera/retail_db --username root --password cloudera --table account --fields-terminated-by ',' -m 1 --target-dir /user/cloudera/project1/account
+
+
+Hive
+-----
+$ hive
+hive> create database original;
+hive> create database masked;
+
+hive> use original;
+
+hive> CREATE EXTERNAL TABLE account ( account_id int, account_name string, phone string) 
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+LINES TERMINATED BY "\n"
+location '/user/cloudera/project1/account';
+
+hive> CREATE EXTERNAL TABLE IF NOT EXISTS contact (contact_id int, account_id int, first_name string, last_name string, phone string, email string) 
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY "," 
+LINES TERMINATED BY "\n" 
+location '/user/cloudera/project1/contact';
+
+
+UDF
+-----
+https://learn-us-east-1-prod-fleet01-xythos.s3.us-east-1.amazonaws.com/5744c71523ee6/1663404?response-content-disposition=inline%3B%20filename%2A%3DUTF-8%27%27DataMaskingProjectStep3-UDF.txt&response-content-type=text%2Fplain&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20190724T054605Z&X-Amz-SignedHeaders=host&X-Amz-Expires=21600&X-Amz-Credential=AKIAIBGJ7RCS23L3LEJQ%2F20190724%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=977401e7749d9a612b94cdee809646013654480a9a17d1d42275a0c7e1f2e04d
+
+Export as jar -- udf.jar
+
+hive> ADD JAR /home/cloudera/workspace/udf.jar;
+hive> create temporary function maskemail as 'Maskemail';
+hive> create temporary function masknum as 'MaskNum';
+
+hive> select account_id, masknum(phone) from account;
+
+
+In Masked databased
+-------------------
+
+hive> use masked;
+
+hive> 
+CREATE TABLE account ( account_id int, account_name string, phone string)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+LINES TERMINATED BY "\n";
+
+hive> CREATE TABLE IF NOT EXISTS contact (contact_id int, account_id int, first_name string, last_name string, phone string, email string) 
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY "," 
+LINES TERMINATED BY "\n";
+
+
+insert into account 
+  select account_id, account_name, masknum(phone) 
+  from original.account;
+
+insert into contact 
+  select contact_id, account_id, first_name, last_name, masknum(phone), maskemil(email) 
+  from original.contact;
+
+   
+
+
